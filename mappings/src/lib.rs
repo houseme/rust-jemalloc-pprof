@@ -34,7 +34,7 @@ mod enabled {
 
     use anyhow::Context;
     use libc::{
-        c_int, c_void, dl_iterate_phdr, dl_phdr_info, size_t, Elf64_Word, PT_LOAD, PT_NOTE,
+        Elf64_Word, PT_LOAD, PT_NOTE, c_int, c_void, dl_iterate_phdr, dl_phdr_info, size_t,
     };
 
     use pprof_util::{BuildId, CastFrom};
