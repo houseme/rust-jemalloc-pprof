@@ -78,3 +78,5 @@ symbolize = ["pprof_util/symbolize"]
 tokio = { workspace = true, features = ["full"] }
 tikv-jemallocator = { workspace = true }
 axum = { workspace = true }
+flate2.workspace = true
+prost.workspace = true

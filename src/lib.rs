@@ -196,3 +196,63 @@ impl JemallocProfCtl {
         profile.to_flamegraph(opts)
     }
 }
+
+#[cfg(all(test, target_os = "macos"))]
+mod tests {
+    use std::io::Read;
+
+    use flate2::read::GzDecoder;
+    use prost::Message;
+
+    use super::{MAPPINGS, StackProfile};
+
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, Message)]
+    struct ProfileProto {
+        #[prost(string, repeated, tag = "6")]
+        string_table: Vec<String>,
+        #[prost(message, repeated, tag = "3")]
+        mapping: Vec<MappingProto>,
+    }
+
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, Message)]
+    struct MappingProto {
+        #[prost(int64, tag = "6")]
+        build_id: i64,
+    }
+
+    #[test]
+    fn pprof_output_contains_macos_uuid_build_id_string() {
+        let mapping = MAPPINGS
+            .as_ref()
+            .expect("macOS mappings are available")
+            .iter()
+            .find(|mapping| mapping.build_id.is_some())
+            .cloned()
+            .expect("loaded macOS image exposes a UUID");
+
+        let expected_build_id = mapping
+            .build_id
+            .as_ref()
+            .expect("checked above")
+            .to_string();
+        let profile = StackProfile {
+            annotations: Vec::new(),
+            stacks: Vec::new(),
+            mappings: vec![mapping],
+        };
+        let encoded = profile.to_pprof(("inuse_space", "bytes"), ("space", "bytes"), None);
+
+        let mut decoded = Vec::new();
+        GzDecoder::new(encoded.as_slice())
+            .read_to_end(&mut decoded)
+            .expect("pprof payload is valid gzip");
+        let profile =
+            ProfileProto::decode(decoded.as_slice()).expect("pprof payload is valid protobuf");
+
+        let build_id_idx =
+            usize::try_from(profile.mapping[0].build_id).expect("positive build id index");
+        assert_eq!(profile.string_table[build_id_idx], expected_build_id);
+    }
+}

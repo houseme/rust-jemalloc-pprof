@@ -11,8 +11,11 @@ publish = false
 jemalloc_pprof = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 axum = { workspace = true }
-[target.'cfg(not(target_env = "msvc"))'.dependencies]
+[target.'cfg(all(not(target_env = "msvc"), not(target_os = "macos")))'.dependencies]
 tikv-jemallocator = { workspace = true, features = ["profiling", "stats", "unprefixed_malloc_on_supported_platforms", "background_threads"] }
+
+[target.'cfg(all(not(target_env = "msvc"), target_os = "macos"))'.dependencies]
+tikv-jemallocator = { workspace = true, features = ["profiling", "stats", "unprefixed_malloc_on_supported_platforms"] }
 
 [features]
 flamegraph = ["jemalloc_pprof/flamegraph"]

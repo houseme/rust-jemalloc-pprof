@@ -1,50 +1,21 @@
 use std::ptr::null_mut;
 
 use errno::{Errno, set_errno};
-#[cfg(target_os = "linux")]
-use libc::c_char;
-#[cfg(target_os = "linux")]
-use libc::c_void;
 use libc::{c_int, size_t};
-#[cfg(target_os = "linux")]
 use mappings::MAPPINGS;
-#[cfg(target_os = "linux")]
 use pprof_util::parse_jeheap;
-#[cfg(target_os = "linux")]
 use std::ffi::CString;
-#[cfg(target_os = "linux")]
 use std::io::BufReader;
-#[cfg(target_os = "linux")]
-use std::mem::size_of_val;
-#[cfg(target_os = "linux")]
-use std::os::unix::ffi::OsStrExt;
-#[cfg(target_os = "linux")]
 use tempfile::NamedTempFile;
+use tikv_jemalloc_ctl::raw;
 
 pub const JP_SUCCESS: c_int = 0;
 pub const JP_FAILURE: c_int = -1;
 
-#[cfg(target_os = "linux")]
-#[link(name = "jemalloc")]
-unsafe extern "C" {
-    // int mallctl(const char *name, void *oldp, size_t *oldlenp, void *newp, size_t newlen);
-    fn mallctl(
-        name: *const c_char,
-        oldp: *mut c_void,
-        oldlenp: *mut size_t,
-        newp: *mut c_void,
-        newlen: size_t,
-    ) -> c_int;
-}
-
 enum Error {
     Io(std::io::Error),
-    #[cfg(target_os = "linux")]
-    Mallctl(c_int),
-    #[cfg(target_os = "linux")]
+    Mallctl,
     ParseProfile(),
-    #[cfg(not(target_os = "linux"))]
-    UnsupportedPlatform,
 }
 
 impl From<std::io::Error> for Error {
@@ -53,36 +24,25 @@ impl From<std::io::Error> for Error {
     }
 }
 
-#[cfg(target_os = "linux")]
+impl From<tikv_jemalloc_ctl::Error> for Error {
+    fn from(_: tikv_jemalloc_ctl::Error) -> Self {
+        Self::Mallctl
+    }
+}
+
 fn dump_pprof_inner() -> Result<Vec<u8>, Error> {
     let f = NamedTempFile::new()?;
-    let path = CString::new(f.path().as_os_str().as_bytes().to_vec()).unwrap();
+    let path = CString::new(f.path().as_os_str().as_encoded_bytes()).expect("temp path is valid");
+
     // SAFETY: "prof.dump" is documented as being writable and taking a C string as input:
     // http://jemalloc.net/jemalloc.3.html#prof.dump
-    let pp = (&mut path.as_ptr()) as *mut _ as *mut _;
-    let ret = unsafe {
-        mallctl(
-            b"prof.dump\0" as *const _ as *const c_char,
-            null_mut(),
-            null_mut(),
-            pp,
-            size_of_val(&pp),
-        )
-    };
-    if ret != 0 {
-        return Err(Error::Mallctl(ret));
-    }
+    unsafe { raw::write(b"prof.dump\0", path.as_ptr()) }?;
 
     let dump_reader = BufReader::new(f);
     let profile =
         parse_jeheap(dump_reader, MAPPINGS.as_deref()).map_err(|_| Error::ParseProfile())?;
     let pprof = profile.to_pprof(("inuse_space", "bytes"), ("space", "bytes"), None);
     Ok(pprof)
-}
-
-#[cfg(not(target_os = "linux"))]
-fn dump_pprof_inner() -> Result<Vec<u8>, Error> {
-    Err(Error::UnsupportedPlatform)
 }
 
 /// Dump the current jemalloc heap profile in pprof format.
@@ -105,12 +65,10 @@ pub unsafe extern "C" fn dump_jemalloc_pprof(buf_out: *mut *mut u8, n_out: *mut 
     let buf = match dump_pprof_inner() {
         Ok(buf) => buf,
         Err(Error::Io(e)) if e.raw_os_error().is_some() => {
-            set_errno(Errno(e.raw_os_error().unwrap()));
+            set_errno(Errno(e.raw_os_error().expect("checked above")));
             return JP_FAILURE;
         }
-        #[cfg(target_os = "linux")]
-        Err(Error::Mallctl(i)) => {
-            set_errno(Errno(i));
+        Err(Error::Mallctl) => {
             return JP_FAILURE;
         }
         // TODO - maybe some of these can have errnos
