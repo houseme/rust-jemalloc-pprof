@@ -18,6 +18,10 @@
 //! Utility crate to extract information about the running process.
 //!
 //! Currently supports Linux and macOS.
+
+#[cfg(not(target_pointer_width = "64"))]
+compile_error!("this module only supports 64-bit targets");
+
 use std::path::PathBuf;
 
 use once_cell::sync::Lazy;
@@ -558,7 +562,10 @@ pub static MAPPINGS: Lazy<Option<Vec<Mapping>>> = Lazy::new(|| {
 });
 
 #[cfg(not(any(target_os = "linux", target_os = "macos")))]
-pub static MAPPINGS: Lazy<Option<Vec<Mapping>>> = Lazy::new(|| None);
+pub static MAPPINGS: Lazy<Option<Vec<Mapping>>> = Lazy::new(|| {
+    tracing::error!("build ID fetching is only supported on Linux or macOS");
+    None
+});
 
 /// Information about a shared object loaded into the current process.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
