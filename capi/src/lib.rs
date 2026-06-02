@@ -43,6 +43,7 @@ enum Error {
     Mallctl(c_int),
     #[cfg(target_os = "linux")]
     ParseProfile(),
+    #[cfg(not(target_os = "linux"))]
     UnsupportedPlatform,
 }
 
