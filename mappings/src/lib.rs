@@ -34,10 +34,10 @@ mod enabled {
 
     use anyhow::Context;
     use libc::{
-        Elf64_Word, PT_LOAD, PT_NOTE, c_int, c_void, dl_iterate_phdr, dl_phdr_info, size_t,
+        c_int, c_void, dl_iterate_phdr, dl_phdr_info, size_t, Elf64_Word, PT_LOAD, PT_NOTE,
     };
 
-    use util::{BuildId, CastFrom};
+    use pprof_util::{BuildId, CastFrom};
 
     use crate::LoadedSegment;
 
