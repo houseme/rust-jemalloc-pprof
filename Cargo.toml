@@ -38,8 +38,6 @@ version = "0.9.0"
 jemalloc_pprof = { path = ".", version = "0.9.0" }
 pprof_util = { path = "./util", version = "0.9.0" }
 mappings = { path = "./mappings", version = "0.9.0" }
-capi = { path = "./capi", version = "0.9.0" }
-rust-jemalloc-pprof-example = { path = "./example", version = "0.9.0" }
 anyhow = "1"
 axum = "0.8.9"
 backtrace = "0.3"
