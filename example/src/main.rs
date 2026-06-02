@@ -59,13 +59,10 @@ pub async fn handle_get_heap_flamegraph() -> Result<impl IntoResponse, (StatusCo
 /// Checks whether jemalloc profiling is activated an returns an error response if not.
 fn require_profiling_activated(
     prof_ctl: &jemalloc_pprof::JemallocProfCtl,
-) -> Result<(), (axum::http::StatusCode, String)> {
+) -> Result<(), (StatusCode, String)> {
     if prof_ctl.activated() {
         Ok(())
     } else {
-        Err((
-            axum::http::StatusCode::FORBIDDEN,
-            "heap profiling not activated".into(),
-        ))
+        Err((StatusCode::FORBIDDEN, "heap profiling not activated".into()))
     }
 }
