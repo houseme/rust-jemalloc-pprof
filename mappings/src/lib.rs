@@ -19,7 +19,10 @@
 //!
 //! Currently supports Linux and macOS.
 
-#[cfg(not(target_pointer_width = "64"))]
+#[cfg(all(
+    any(target_os = "linux", target_os = "macos"),
+    not(target_pointer_width = "64")
+))]
 compile_error!("this module only supports 64-bit targets");
 
 use std::path::PathBuf;
@@ -40,7 +43,7 @@ fn build_mappings(objects: &[SharedObject]) -> Vec<Mapping> {
             let memory_start = object.base_address.wrapping_add(segment.memory_offset);
             mappings.push(Mapping {
                 memory_start,
-                memory_end: memory_start + segment.memory_size,
+                memory_end: memory_start.wrapping_add(segment.memory_size),
                 memory_offset: segment.memory_offset,
                 file_offset: segment.file_offset,
                 pathname: object.path_name.clone(),

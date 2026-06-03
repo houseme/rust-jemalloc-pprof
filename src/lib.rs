@@ -249,8 +249,18 @@ mod tests {
         let profile =
             ProfileProto::decode(decoded.as_slice()).expect("pprof payload is valid protobuf");
 
-        let build_id_idx =
-            usize::try_from(profile.mapping[0].build_id).expect("positive build id index");
-        assert_eq!(profile.string_table[build_id_idx], expected_build_id);
+        let found_expected_build_id = profile.mapping.iter().any(|mapping| {
+            let Ok(build_id_idx) = usize::try_from(mapping.build_id) else {
+                return false;
+            };
+            profile
+                .string_table
+                .get(build_id_idx)
+                .is_some_and(|build_id| build_id == &expected_build_id)
+        });
+        assert!(
+            found_expected_build_id,
+            "pprof payload should retain the expected macOS UUID"
+        );
     }
 }

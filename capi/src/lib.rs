@@ -14,7 +14,7 @@ pub const JP_FAILURE: c_int = -1;
 
 enum Error {
     Io(std::io::Error),
-    Mallctl,
+    Mallctl(c_int),
     ParseProfile(),
 }
 
@@ -25,8 +25,10 @@ impl From<std::io::Error> for Error {
 }
 
 impl From<tikv_jemalloc_ctl::Error> for Error {
-    fn from(_: tikv_jemalloc_ctl::Error) -> Self {
-        Self::Mallctl
+    fn from(err: tikv_jemalloc_ctl::Error) -> Self {
+        // SAFETY: `tikv_jemalloc_ctl::Error` is `repr(transparent)` over a nonzero C int.
+        let errno = unsafe { std::mem::transmute::<tikv_jemalloc_ctl::Error, c_int>(err) };
+        Self::Mallctl(errno)
     }
 }
 
@@ -67,7 +69,8 @@ pub unsafe extern "C" fn dump_jemalloc_pprof(buf_out: *mut *mut u8, n_out: *mut 
             set_errno(Errno(e.raw_os_error().expect("checked above")));
             return JP_FAILURE;
         }
-        Err(Error::Mallctl) => {
+        Err(Error::Mallctl(errno)) => {
+            set_errno(Errno(errno));
             return JP_FAILURE;
         }
         // TODO - maybe some of these can have errnos
