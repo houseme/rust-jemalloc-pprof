@@ -81,7 +81,7 @@ mod enabled {
 
     use util::{BuildId, CastFrom};
 
-    use crate::LoadedSegment;
+    use crate::{LoadedSegment, assert_pointer_valid};
 
     use super::SharedObject;
 
