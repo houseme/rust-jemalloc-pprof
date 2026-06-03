@@ -13,7 +13,6 @@ authors = [
     "Brennan Vincent <brennan.vincent@polarsignals.com>",
 ]
 repository.workspace = true
-rust-version.workspace = true
 keywords = ["jemalloc", "pprof", "memory", "profiling", "observability"]
 categories = [
     "development-tools",
@@ -31,7 +30,6 @@ all-features = true
 edition = "2024"
 license = "Apache-2.0"
 repository = "https://github.com/polarsignals/rust-jemalloc-pprof"
-rust-version = "1.85.0"
 version = "0.9.0"
 
 [workspace.dependencies]
